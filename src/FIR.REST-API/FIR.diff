@@ -1,0 +1,129 @@
+diff -aburN FIR/api/admin.py FIR.rest/api/admin.py
+--- FIR/api/admin.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/api/admin.py	2015-11-25 20:40:34.097219763 +0100
+@@ -0,0 +1,5 @@
++from django.contrib import admin
++
++# Register your models here.
++
++
+diff -aburN FIR/api/models.py FIR.rest/api/models.py
+--- FIR/api/models.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/api/models.py	2015-11-25 20:40:34.097219763 +0100
+@@ -0,0 +1,3 @@
++from django.db import models
++
++# Create your models here.
+diff -aburN FIR/api/serializers.py FIR.rest/api/serializers.py
+--- FIR/api/serializers.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/api/serializers.py	2015-11-25 20:40:34.097219763 +0100
+@@ -0,0 +1,7 @@
++from rest_framework import serializers
++from incidents.models import *
++
++
++class incidents(serializers.ModelSerializer):
++    class Meta:
++        model = Incident
+diff -aburN FIR/api/tests.py FIR.rest/api/tests.py
+--- FIR/api/tests.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/api/tests.py	2015-11-25 20:40:34.097219763 +0100
+@@ -0,0 +1,3 @@
++from django.test import TestCase
++
++# Create your tests here.
+diff -aburN FIR/api/urls.py FIR.rest/api/urls.py
+--- FIR/api/urls.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/api/urls.py	2015-11-25 20:40:34.097219763 +0100
+@@ -0,0 +1,6 @@
++from rest_framework import routers
++from . import views
++
++router = routers.DefaultRouter()
++router.register(r'incidents', views.incidents, base_name='api_incidents')
++urlpatterns = router.urls
+diff -aburN FIR/api/views.py FIR.rest/api/views.py
+--- FIR/api/views.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/api/views.py	2015-11-25 20:40:34.097219763 +0100
+@@ -0,0 +1,11 @@
++from rest_framework import viewsets
++
++from incidents.models import *
++from . import serializers
++
++class incidents(viewsets.ModelViewSet):
++    """
++    A simple ViewSet for viewing and editing FIR.
++    """
++    queryset = Incident.objects.all()
++    serializer_class = serializers.incidents
+diff -aburN FIR/fir/config/base.py FIR.rest/fir/config/base.py
+--- FIR/fir/config/base.py	2015-11-25 20:33:08.588661210 +0100
++++ FIR.rest/fir/config/base.py	2015-11-25 20:43:01.894632292 +0100
+@@ -78,10 +78,12 @@
+     'django.contrib.sites',
+     'django.contrib.messages',
+     'django.contrib.staticfiles',
++    'rest_framework', 
+     'incidents',
+     'django.contrib.admin',
+     'fir_plugins',
+-    'fir_artifacts'
++    'fir_artifacts',
++    'api'
+ )
+ 
+ apps_file = os.path.join(BASE_DIR, 'fir', 'config', 'installed_apps.txt')
+diff -aburN FIR/fir/settings.py FIR.rest/fir/settings.py
+--- FIR/fir/settings.py	2015-11-25 20:33:08.588661210 +0100
++++ FIR.rest/fir/settings.py	2015-11-25 20:46:17.380921139 +0100
+@@ -31,3 +31,12 @@
+     from fir.config.dev import *
+ except ImportError:
+     pass
++
++REST_FRAMEWORK = {
++    'DEFAULT_AUTHENTICATION_CLASSES': (
++    'rest_framework.authentication.SessionAuthentication',
++    ),
++    'DEFAULT_PERMISSION_CLASSES': (
++        'rest_framework.permissions.IsAuthenticated',
++    )
++}
+diff -aburN FIR/fir/urls.py FIR.rest/fir/urls.py
+--- FIR/fir/urls.py	1970-01-01 01:00:00.000000000 +0100
++++ FIR.rest/fir/urls.py	2015-11-25 20:15:15.769862090 +0100
+@@ -0,0 +1,33 @@
++from django.conf.urls import patterns, include, url
++
++# Uncomment the next two lines to enable the admin:
++from django.contrib import admin
++admin.autodiscover()
++
++urlpatterns = patterns('',
++	url(r'^tools/', include('incidents.custom_urls.tools', namespace='tools')),
++    url(r'^incidents/', include('incidents.urls', namespace='incidents')),
++    url(r'^search/$', 'incidents.views.search', name='search'),
++    url(r'^events/', include('incidents.custom_urls.events', namespace='events')),
++    url(r'^login/', 'incidents.views.user_login', name='login'),            # have a "main module"
++    url(r'^logout/', 'incidents.views.user_logout', name='logout'),         # main module
++    url(r'^artifacts/', include('incidents.custom_urls.artifacts', namespace='artifacts')),
++    url(r'^stats/', include('incidents.custom_urls.stats', namespace='stats')),
++    url(r'^ajax/', include('incidents.custom_urls.ajax', namespace='ajax')),
++    url(r'^user/', include('incidents.custom_urls.user', namespace='user')),
++    url(r'^dashboard/', include('incidents.custom_urls.dashboard', namespace='dashboard')),
++    url(r'^admin/', include(admin.site.urls)),
++    url(r'^$', 'incidents.views.index'),
++
++    # alerting
++    url(r'^alerting/', include('fir_alerting.urls', namespace='alerting')),
++
++    # todos
++    url(r'^todos/', include('fir_todos.urls', namespace='todos')),
++
++    # nuggets
++    url(r'^nuggets/', include('fir_nuggets.urls', namespace='nuggets')),
++  
++    #api rest
++    url(r'^api/v1/', include('api.urls')),
++)
